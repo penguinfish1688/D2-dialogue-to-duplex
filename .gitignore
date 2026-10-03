@@ -1,0 +1,55 @@
+# Python environments and build output
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Local settings and credentials
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+.vscode/
+
+# Runtime assets and experiment output
+.runtime/
+.cache/
+checkpoints/
+weights/
+snapshots/
+outputs/
+runs/
+logs/
+wandb/
+slurm-*.out
+slurm-*.err
+*.log
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+
+# Downloaded data and generated media
+data/raw/
+data/processed/
+*.arrow
+*.parquet
+*.wav
+*.mp3
+*.flac
+*.mp4
+
+# Manuscripts stay outside the public code repository
+research_plan/
+paper/
+*.pdf
+*.tex
+*.bib
