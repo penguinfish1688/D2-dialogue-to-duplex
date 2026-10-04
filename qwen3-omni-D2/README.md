@@ -30,12 +30,18 @@ The Dialogue-to-Duplex app listens on localhost:8000. Use headphones. For a remo
 - Text is greedy. Codec sampling uses temperature 0.7, top-k 50, top-p 1.0, repetition penalty 1.1; residual codebooks use temperature 0.7, top-k 50, top-p 0.8. Default seed: 1337.
 - RESPONSE and INTERRUPT retain IDs 151669 and 151670. The appended PAD row, audio timing, codec BOS/EOS, and native Chelsie speaker are unchanged.
 
-Inference loads the backbone directly onto the target GPU, uses BF16 model computation, and runs PyTorch-compiled native `grouped_mm` experts. This reduces host-memory use and avoids copying each selected expert's weights during inference. GPU smoke tests completed with a 96 GiB host-memory allocation, peaking at about 67 GiB. Install a C++ compiler and Python 3.12 development headers; the first model load compiles and caches kernels and can take several minutes. Training uses native `eager` to keep expert activations memory-efficient. First-use graph capture within the streaming loop is included in the WAV command's reported RTF.
+Inference uses BF16, PyTorch-compiled `grouped_mm` experts, a fixed KV cache, and CUDA graphs for prefill and serial decoding. We recommend an RTX PRO 6000 Blackwell (96 GB) and 96 GB of system RAM. Install a C++ compiler and Python 3.12 development headers; the first startup compiles kernels and can take several minutes. Training uses native `eager` execution.
+
+Conversations stop when the KV budget is full. Increase `--kv-budget` for longer conversations. File inference appends eight seconds of silence by default; use `--tail-seconds` to give the model more time to finish speaking.
+
+The system prompt is fixed to the InstructS2S training prompt and inserted once at the start of each conversation:
+
+> You are a helpful spoken conversational assistant. Respond naturally when the user finishes speaking.
 
 ## Fine-tune
 
 ```bash
-d2-qwen train --data samples.json --output my-qwen-d2 --steps 3
+d2-qwen train --data samples.json --output my-qwen-d2 --steps 2000
 ```
 
 Samples use the [shared manifest format](../d2/SAMPLES.md). The model has **266,286,976** trainable parameters: rank-128 Thinker/Talker/context/CodePredictor adapters, codec interfaces and small parameters, control/stream rows, and the current encoder SFT parameters. Routed experts remain frozen. Encoder SFT trains its convolution frontend, rank-32 attention adapters, and existing rank-32 non-attention adapters.
@@ -44,4 +50,4 @@ Loss is text CE plus codec CE. PAD weight is 0.05, RESPONSE/INTERRUPT weights ar
 
 The release manifest schema is illustrated in [configs/release.json](configs/release.json). `encoder.safetensors` contains the distilled encoder trainables; `d2.safetensors` contains the complete current SFT trainable inventory. No optimizer, dataset, or research-run metadata is required for inference.
 
-[Benchmark reproduction and paced app test](../benchmarks/README.md). The app sends processing time in each acknowledgment so streaming RTF can be measured independently of microphone pacing.
+See the [evaluation guide](../benchmarks/README.md) for benchmarks and app performance measurements.

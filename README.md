@@ -1,14 +1,31 @@
 # Dialogue-to-Duplex
 
+[Hugging Face](https://huggingface.co/penguinfish1688/dialogue-to-duplex) · [Quick Start](#quick-start) · [Fine-tuning](#fine-tuning) · [Evaluation](benchmarks/README.md)
+
+**Dialogue-to-Duplex (D2)** turns pretrained speech models into full-duplex conversational models that listen and speak at the same time. D2 learns when to respond, continue listening, and yield to interruptions.
+
+D2 combines causal audio encoder distillation with dialogue fine-tuning, while keeping each model's native speech generator. This repository provides inference, a browser app, and fine-tuning for Qwen3-Omni and LLaMA-Omni2.
+
+![Dialogue-to-Duplex architecture](https://huggingface.co/penguinfish1688/dialogue-to-duplex/resolve/main/assets/d2-overview.png)
+
+## Models
+
 **Currently, D2 releases only the Qwen3-Omni 80 ms checkpoint.**
 
-**Dialogue-to-Duplex** adapts pretrained speech models to listen and speak at the same time. D2 learns when to respond, continue listening, and stop speaking after an interruption.
+| Model | Checkpoint | Documentation |
+| --- | --- | --- |
+| Qwen3-Omni D2 · 80 ms | [Hugging Face](https://huggingface.co/penguinfish1688/dialogue-to-duplex) | [Qwen3-Omni D2](qwen3-omni-D2/README.md) |
+| LLaMA-Omni2 D2 | Not yet released | [LLaMA-Omni2 D2](llama-omni2-D2/README.md) |
 
-The conversion has two stages: distill a causal audio encoder from the original encoder, then fine-tune the speech model on dialogue timelines containing silence, overlap, and interruptions. At each interaction interval, the model reads user audio and its previously played audio, then produces text and speech. Each model keeps its native audio codec and speech generator.
+The 80 ms interval is the model's audio processing step; response latency also depends on generation and computation.
 
-## Start here
+## Quick Start
 
-Use Linux, Python 3.12, an NVIDIA CUDA GPU, and a compatible driver. Qwen inference is validated on an RTX Pro 6000 with 96 GB of GPU memory and a 96 GiB host-memory allocation. Install `git`, `ffmpeg`, and `libsndfile` through your system package manager. Qwen also needs a C++ compiler and Python 3.12 development headers for its native PyTorch kernels.
+### Installation
+
+Use Linux, Python 3.12, and an NVIDIA GPU with a compatible CUDA driver. For Qwen, we recommend an **RTX PRO 6000 Blackwell (96 GB)** and **96 GB of system RAM**. Allow approximately **73 GB** for model weights, plus space for dependencies and caches.
+
+Install `git`, `ffmpeg`, `libsndfile`, a C++ compiler, and Python 3.12 development headers through your system package manager, then run:
 
 ```bash
 git clone https://github.com/penguinfish1688/D2-dialogue-to-duplex.git
@@ -16,90 +33,55 @@ cd D2-dialogue-to-duplex
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-```
-
-Install **one** model per environment:
-
-```bash
 pip install -c qwen3-omni-D2/configs/requirements.txt -e '.[qwen]'
-# Or, in a separate environment:
-pip install -c llama-omni2-D2/configs/requirements.txt -e '.[llama]'
 ```
 
-Their Transformers versions differ. Keep the environments separate.
-
-The constraint files pin transitive dependencies as well as model libraries.
-
-| Model | Intervals supported by the code | Instructions |
-| --- | --- | --- |
-| Qwen3-Omni D2 | 80, 160, 320, 640, 1040 ms | [Qwen README](qwen3-omni-D2/README.md) |
-| LLaMA-Omni2 D2 | 100, 200, 400, 800 ms | [LLaMA README](llama-omni2-D2/README.md) |
-
-The interval is part of the trained checkpoint; changing a command-line option cannot turn one checkpoint into another interval.
-
-## Checkpoints
-
-[Dialogue-to-Duplex](https://huggingface.co/penguinfish1688/dialogue-to-duplex) (Qwen3-Omni, 80 ms) is public and is the default for `d2-qwen`. No Hugging Face login is needed. LLaMA weights are not published yet; `d2-llama` requires a local release with `--model`.
+### Browser Demo
 
 ```bash
-d2-qwen download
-d2-qwen infer --input question.wav --output response.wav --tail-seconds 20
 d2-qwen app
 ```
 
-The first download needs approximately **73 GB** for the Qwen backbone and D2 weights, plus space for dependencies and caches. Set `HF_HOME` before running to choose the cache location. Downloads are reused across commands. Each D2 release contains `d2.json`, `d2.safetensors`, and `encoder.safetensors`; the loader checks parameter names and shapes and downloads the pinned backbone automatically. Use `--revision COMMIT` to pin a D2 release, `--offline` (or `HF_HUB_OFFLINE=1`) to require cached assets, or `--model PATH_OR_HF_ID` for another release.
+The checkpoint and backbone download automatically from Hugging Face; no login is required. The first startup also compiles kernels and can take several minutes. Once `Uvicorn running` appears, open [http://localhost:8000](http://localhost:8000), allow microphone access, and use headphones.
 
-The first startup downloads weights and compiles kernels; this can take several minutes. Wait for `Uvicorn running` before opening `http://localhost:8000` for the microphone app. For a remote GPU, run `ssh -L 8000:localhost:8000 user@gpu-host` on your computer, then open that same localhost URL. Browsers require localhost or HTTPS for microphone access; the app explains this if access is unavailable. Use headphones. LLaMA uses the same commands with `d2-llama`. The app and WAV command share the inference implementation. Output is mono 24-kHz PCM. The WAV command also writes a JSON transcript/event trace and measured real-time factor (RTF). App acknowledgments report server processing time for measuring sustained streaming RTF; RTF below 1 means faster than real time.
+For a remote GPU, run this on your computer before opening the same URL:
 
-Inference uses native PyTorch, a fixed KV-cache allocation, CUDA graphs for decoder prefill and serial decoding, and the trained control protocol. The default Thinker budget is **2048 tokens**. Conversations stop when that budget is exhausted; start a new conversation or increase `--kv-budget`. The maximum duration, including the system prompt, is reported by the runtime. File inference appends eight seconds of silence by default; use `--tail-seconds` for a longer response.
+```bash
+ssh -L 8000:localhost:8000 user@gpu-host
+```
 
-The system prompt is hardcoded, matching InstructS2S training:
+The app serves one conversation at a time. The default context supports about 54 seconds; start a new conversation or increase it with `d2-qwen app --kv-budget 4096`.
 
-> You are a helpful spoken conversational assistant. Respond naturally when the user finishes speaking.
+### Audio File Inference
 
-It is inserted once, before the first audio interval. There is no app setting that changes it.
+```bash
+d2-qwen infer --input question.wav --output response.wav --tail-seconds 20
+```
+
+This saves the spoken response to `response.wav` and a transcript and event trace to `response.json`. The response tail gives the model time to finish speaking after the input ends.
+
+Both the app and file inference use BF16, a fixed KV cache, and CUDA graphs for prefill and serial decoding. See the [Qwen guide](qwen3-omni-D2/README.md) for runtime options and the [LLaMA guide](llama-omni2-D2/README.md) for its separate environment.
 
 ## Fine-tuning
 
-Use a local or downloaded release and a manifest of prepared samples:
+Prepare your data using the [sample format](d2/SAMPLES.md), then fine-tune the released checkpoint:
 
 ```bash
-d2-qwen train --model MODEL --data samples.json --output my-d2 --steps 3
-# Or:
-d2-llama train --model MODEL --data samples.json --output my-d2 --steps 3
+d2-qwen train --data samples.json --output my-d2 --steps 2000
 ```
 
-This is a small single-GPU fine-tuning loop. It uses the original model losses, parameter groups, BF16 compute, FP32 trainable weights, AdamW, and gradient clipping. It writes a new release directory that can be passed directly to `infer`, `app`, or `train`. Each invocation starts a new optimizer; optimizer-state resume and distributed orchestration are outside this interface.
+Load the resulting checkpoint with the same commands:
 
-See [sample format](d2/SAMPLES.md) and the model READMEs for tensor shapes and training defaults. Data, model weights, generated audio, and run logs belong outside Git.
-
-## Validation
-
-The 80-ms Qwen and 100-ms LLaMA paths were tested on RTX Pro 6000 GPUs using separate Python 3.12 environments and local D2 releases. Both completed three optimizer updates, saved and reloaded their checkpoints, and generated coherent spoken answers verified with Whisper ASR. Qwen also passed a fresh clone and installation with an anonymous download of the backbone and released D2 weights into an empty cache.
-
-At update 1, Qwen's finite training loss was **0.46766442** and LLaMA's was **2.21675825**. Separate comparisons matched the original training forward losses bit for bit at the same weights and samples over three updates. These comparisons do not establish an independently trained, bitwise-identical trajectory from scratch.
-
-Two 28-second Qwen browser conversations measured **0.638 and 0.637 RTF**, with at most **120 ms** of input backlog, on an RTX Pro 6000. Chromium used an injected microphone recording and the actual app's AudioWorklet, WebSocket, and playback path. Both conversations produced a relevant answer and nonzero output audio with no browser errors. Session kernels were prewarmed; physical microphone/speaker operation has not been tested. The separate cold-install paced WebSocket check measured 0.657 RTF on its first conversation and 0.653 on its second.
-
-These app tests use BF16 inference and a fixed 2048-token Thinker budget. RTF is processing time divided by the complete input-plus-silence timeline; model loading and session initialization are excluded. **The browser meets RTF below 1; its measured RTF remains above 0.6.** Earlier LLaMA streaming smoke measured about 0.75 RTF. These app measurements are sample checks. BF16 kernels are not promised to be bitwise deterministic; the seed controls sampling.
-
-The completed public-release evaluation scored **69.05 on VoiceBench** (200 examples per task, 1,800 total), compared with 70.07 historically. All **535 FDB examples** completed transcription and scoring: quality was **4.58/5**, turn-taking success **99.16%**, interruption success **99.0%**, and pause success **21.76%**. Aggregate streaming RTF was **0.593 for VoiceBench** and **0.753 for FDB**; FDB uses a 4096-token cache to fit its longer inputs. See the [full comparison, timing definitions and pinned revisions](benchmarks/RESULTS.md).
-
-The wheel builds with its configs and browser assets. Dependency checks and CPU tests pass in both model environments. To run the CPU checks, install `.[test]` alongside your model extra and run `python -m pytest`; tests for the other model's Transformers version are skipped.
-
-## Repository
-
-```text
-d2/                 Shared checkpoint loading, PCM I/O, training loop, browser UI
-qwen3-omni-D2/       Qwen model/, inference/, training/, app/, configs/
-llama-omni2-D2/      LLaMA model/, inference/, training/, app/, configs/
-tests/              Checkpoint, timing, cache, and app checks
+```bash
+d2-qwen app --model my-d2
 ```
 
-Each model directory is an installable Python package (`d2_qwen` or `d2_llama`). There are no dependencies on a private checkout or cluster directory.
+See the model guides for training settings and trainable parameters.
 
-Upstream projects: [Qwen3-Omni](https://github.com/QwenLM/Qwen3-Omni), [LLaMA-Omni2](https://github.com/ictnlp/LLaMA-Omni2), [Transformers](https://github.com/huggingface/transformers), [Whisper](https://github.com/openai/whisper), [CosyVoice](https://github.com/FunAudioLLM/CosyVoice), and [Matcha-TTS](https://github.com/shivammehta25/Matcha-TTS). Their code and model licenses apply to those dependencies.
+## Evaluation
 
-## Benchmarks
+See the [evaluation guide](benchmarks/README.md) to run VoiceBench and Full-Duplex-Bench. Results and figures are available on the [model card](https://huggingface.co/penguinfish1688/dialogue-to-duplex#research-results).
 
-See [benchmarks/README.md](benchmarks/README.md) for the fixed VoiceBench selection (200 examples per task), Full-Duplex-Bench, and a paced app test. Reported research scores and fresh public-release measurements are kept separate.
+## Acknowledgments
+
+D2 builds on [Qwen3-Omni](https://github.com/QwenLM/Qwen3-Omni), [LLaMA-Omni2](https://github.com/ictnlp/LLaMA-Omni2), [Transformers](https://github.com/huggingface/transformers), [Whisper](https://github.com/openai/whisper), [CosyVoice](https://github.com/FunAudioLLM/CosyVoice), and [Matcha-TTS](https://github.com/shivammehta25/Matcha-TTS). Please follow the licenses of the underlying models and dependencies.

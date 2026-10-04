@@ -39,7 +39,7 @@ Thinker, speech-decoder, and encoder computation use BF16. Inference stores the 
 ## Fine-tune
 
 ```bash
-d2-llama train --model MODEL --data samples.json --output my-llama-d2 --steps 3
+d2-llama train --model MODEL --data samples.json --output my-llama-d2 --steps 2000
 ```
 
 Samples use the [shared manifest format](../d2/SAMPLES.md). The current model has **180,607,488** trainable parameters: rank-128 Thinker attention and speech-decoder attention/MLP adapters, rank-32 encoder attention/MLP/projector adapters, encoder convolution weights, control rows, and two stream rows. The released speech-conditioning projection and fusion gate remain frozen.
