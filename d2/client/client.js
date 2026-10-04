@@ -11,6 +11,7 @@ async function cleanup(message='Stopped'){
 start.onclick=async()=>{
   start.disabled=true;status.textContent='Starting…';transcript.textContent='';
   try{
+    if(!navigator.mediaDevices?.getUserMedia){throw new Error('Microphone access needs localhost or HTTPS. For a remote GPU, use SSH port forwarding and open http://localhost:8000.');}
     microphone=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:false}});
     context=new AudioContext();await context.resume();
     await context.audioWorklet.addModule('/static/audio.js');
