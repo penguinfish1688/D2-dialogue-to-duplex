@@ -30,7 +30,7 @@ The Dialogue-to-Duplex app listens on localhost:8000. Use headphones. For a remo
 - Text is greedy. Codec sampling uses temperature 0.7, top-k 50, top-p 1.0, repetition penalty 1.1; residual codebooks use temperature 0.7, top-k 50, top-p 0.8. Default seed: 1337.
 - RESPONSE and INTERRUPT retain IDs 151669 and 151670. The appended PAD row, audio timing, codec BOS/EOS, and native Chelsie speaker are unchanged.
 
-Inference uses BF16 model computation and PyTorch-compiled native `grouped_mm` experts. This avoids copying each selected expert's weights and supports CUDA graph capture. Install a C++ compiler and Python 3.12 development headers; the first model load compiles and caches kernels and can take several minutes. Training uses native `eager` to keep expert activations memory-efficient. First-use graph capture within the streaming loop is included in the WAV command's reported RTF.
+Inference loads the backbone directly onto the target GPU, uses BF16 model computation, and runs PyTorch-compiled native `grouped_mm` experts. This reduces host-memory use and avoids copying each selected expert's weights during inference. GPU smoke tests completed with a 96 GiB host-memory allocation, peaking at about 67 GiB. Install a C++ compiler and Python 3.12 development headers; the first model load compiles and caches kernels and can take several minutes. Training uses native `eager` to keep expert activations memory-efficient. First-use graph capture within the streaming loop is included in the WAV command's reported RTF.
 
 ## Fine-tune
 

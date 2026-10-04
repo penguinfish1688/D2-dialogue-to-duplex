@@ -8,7 +8,7 @@ The conversion has two stages: distill a causal audio encoder from the original 
 
 ## Start here
 
-Use Linux, Python 3.12, an NVIDIA CUDA GPU, and a compatible driver. The full Qwen model needs substantial GPU memory; validation uses an RTX Pro 6000 with 96 GB. Install `git`, `ffmpeg`, and `libsndfile` through your system package manager. Qwen also needs a C++ compiler and Python 3.12 development headers for its native PyTorch kernels.
+Use Linux, Python 3.12, an NVIDIA CUDA GPU, and a compatible driver. Qwen inference is validated on an RTX Pro 6000 with 96 GB of GPU memory and a 96 GiB host-memory allocation. Install `git`, `ffmpeg`, and `libsndfile` through your system package manager. Qwen also needs a C++ compiler and Python 3.12 development headers for its native PyTorch kernels.
 
 ```bash
 git clone https://github.com/penguinfish1688/D2-dialogue-to-duplex.git

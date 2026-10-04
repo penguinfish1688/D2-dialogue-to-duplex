@@ -27,6 +27,7 @@ def load_model(source, *, device="cuda", revision=None, offline=False, training=
     qwen = Qwen3OmniMoeForConditionalGeneration.from_pretrained(
         base,
         dtype=torch.bfloat16,
+        device_map=None if training else {"": device},
         attn_implementation="sdpa",
         experts_implementation=experts,
         local_files_only=True,
