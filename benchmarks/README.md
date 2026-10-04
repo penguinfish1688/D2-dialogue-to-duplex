@@ -13,7 +13,7 @@ python benchmarks/run.py voicebench \
   --output results/voicebench
 ```
 
-Preparation downloads the selected audio and the pinned upstream evaluator. The dataset revision is `b02edcef1330480be3a11bd6f7434ac32f05ad08`; the evaluator commit is `3c3b0d3a7a956f745305eb348f5e03ce7ec73dad`. SD-QA accents and MMSU domains are selected round-robin; the remaining tasks use their first 200 rows. AlpacaEval uses `alpacaeval_full`.
+Preparation reports metadata and audio progress, downloads only the selected audio, and clones the pinned upstream evaluator. The dataset revision is `b02edcef1330480be3a11bd6f7434ac32f05ad08`; the evaluator commit is `3c3b0d3a7a956f745305eb348f5e03ce7ec73dad`. SD-QA accents and MMSU domains are selected round-robin; the remaining tasks use their first 200 rows. AlpacaEval uses `alpacaeval_full`.
 
 Each prompt receives 20 seconds of response silence. Scoring uses model text after a RESPONSE event following the final audible user frame. The original benchmark's linear resampling, PCM rounding, and -60 dBFS audible-boundary detector are preserved. Audio is saved losslessly as FLAC to save disk space.
 

@@ -297,21 +297,30 @@ def prepare_subset(
         raise ValueError(f"refusing to replace incompatible manifest: {manifest_path}")
 
     candidate_count = int(limit_per_task) + 10
-    requests: list[tuple[str, str, str]] = []
+    requests: list[tuple[str, str, str, int]] = []
     for task in TASKS:
         config, splits = TASK_CONFIGS[task]
-        requests.extend((task, config, split) for split in splits)
+        count = (
+            math.ceil(candidate_count / len(splits)) + 10 if len(splits) > 1 else candidate_count
+        )
+        requests.extend((task, config, split, count) for split in splits)
     fetched: dict[tuple[str, str], list[dict[str, Any]]] = {}
     with ThreadPoolExecutor(max_workers=4) as pool:
         futures = {
-            pool.submit(_fetch_split, config, split, length=candidate_count): (
+            pool.submit(_fetch_split, config, split, length=count): (
                 task,
                 split,
             )
-            for task, config, split in requests
+            for task, config, split, count in requests
         }
         for future, key in futures.items():
             fetched[key] = future.result()
+            print(
+                json.dumps(
+                    dict(phase="metadata", task=key[0], split=key[1], rows=len(fetched[key]))
+                ),
+                flush=True,
+            )
 
     rows: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
@@ -371,6 +380,13 @@ def prepare_subset(
                 }
             )
             accepted += 1
+            if accepted % 25 == 0 or accepted == int(limit_per_task):
+                print(
+                    json.dumps(
+                        dict(phase="audio", task=task, completed=accepted, selected=limit_per_task)
+                    ),
+                    flush=True,
+                )
         if accepted != int(limit_per_task):
             raise RuntimeError(
                 f"only {accepted} valid VoiceBench rows found for {task}; "
