@@ -12,14 +12,13 @@ import math
 import os
 from pathlib import Path
 import re
-import subprocess
 import time
 from typing import Any, Iterable, Mapping
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
-from common import (
+from benchmarks.vb.common import (
     DEFAULT_SAMPLE_LIMIT,
     ROLLOUT_FRAMES,
     TASKS,
@@ -31,7 +30,7 @@ DATASET_ID = "hlt-lab/voicebench"
 DATASET_REVISION = "b02edcef1330480be3a11bd6f7434ac32f05ad08"
 UPSTREAM_REPOSITORY = "https://github.com/MatthewCYM/VoiceBench.git"
 UPSTREAM_COMMIT = "3c3b0d3a7a956f745305eb348f5e03ce7ec73dad"
-DEFAULT_ROOT = Path("bench-data/voicebench")
+DEFAULT_ROOT = Path("bench-data/vb")
 ROWS_ENDPOINT = "https://datasets-server.huggingface.co/rows"
 MAX_CONTEXT_FRAMES = 1_125
 INPUT_FRAME_SAMPLES = 1_280
@@ -235,40 +234,10 @@ def _slug(value: str) -> str:
     return result
 
 
-def _git_output(*args: str) -> str:
-    return subprocess.run(
-        args,
-        check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    ).stdout.strip()
-
-
 def prepare_upstream(path: Path) -> None:
-    destination = path.expanduser().resolve()
-    if not destination.exists():
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(
-            [
-                "git",
-                "clone",
-                "--filter=blob:none",
-                "--no-checkout",
-                UPSTREAM_REPOSITORY,
-                str(destination),
-            ],
-            check=True,
-        )
-        subprocess.run(
-            ["git", "-C", str(destination), "checkout", "--detach", UPSTREAM_COMMIT],
-            check=True,
-        )
-    commit = _git_output("git", "-C", str(destination), "rev-parse", "HEAD")
-    if commit != UPSTREAM_COMMIT:
-        raise ValueError(f"VoiceBench source is at {commit}; expected {UPSTREAM_COMMIT}")
-    if _git_output("git", "-C", str(destination), "status", "--porcelain"):
-        raise ValueError(f"VoiceBench source has local modifications: {destination}")
+    from benchmarks.common import verify_upstream
+
+    verify_upstream(path, UPSTREAM_COMMIT)
 
 
 def prepare_subset(
@@ -431,6 +400,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--limit-per-task", type=int, default=DEFAULT_SAMPLE_LIMIT)
     parser.add_argument("--rollout-frames", type=int, default=ROLLOUT_FRAMES)
     parser.add_argument("--skip-upstream", action="store_true")
+    parser.add_argument("--upstream", type=Path, default=Path(__file__).parent / "official")
     return parser
 
 
@@ -438,7 +408,7 @@ def main() -> int:
     args = _parser().parse_args()
     root = args.root.expanduser().resolve()
     if not args.skip_upstream:
-        prepare_upstream(root / "upstream" / "VoiceBench")
+        prepare_upstream(args.upstream)
     manifest = prepare_subset(
         root,
         limit_per_task=args.limit_per_task,

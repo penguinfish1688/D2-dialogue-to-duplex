@@ -1,46 +1,26 @@
-"""Run the released Qwen runtime on VoiceBench or Full-Duplex-Bench."""
+"""Shared streaming inference loop for benchmark adapters."""
 
 import argparse
-import asyncio
-from collections import Counter
 import json
 from pathlib import Path
 import shutil
 import subprocess
 import time
 
-from common import DATASET_REVISION, FDB_CATEGORIES, TASKS, last_audible_frame
-from common import read_benchmark_audio, response_text, sha256, write_json
+from benchmarks.common import read_benchmark_audio, sha256, write_json
 
 
-def samples(args):
-    rows = []
-    if args.benchmark == "voicebench":
-        manifest = json.loads(args.data.read_text())
-        if not manifest.get("complete") or manifest["dataset_revision"] != DATASET_REVISION:
-            raise ValueError("Expected a complete manifest at the pinned VoiceBench revision")
-        counts = Counter()
-        for item in manifest["rows"]:
-            task = item["task"]
-            if counts[task] >= args.limit:
-                continue
-            counts[task] += 1
-            rows.append(dict(item, path=args.data.parent / item["audio"]["path"], task=task))
-        if dict(counts) != dict.fromkeys(TASKS, args.limit):
-            raise ValueError(f"Expected {args.limit} samples for each task: {counts}")
-    else:
-        for category, expected in FDB_CATEGORIES.items():
-            files = sorted(
-                (args.data / category).glob("*/input.wav"), key=lambda p: int(p.parent.name)
-            )
-            if len(files) != expected:
-                raise ValueError(f"Expected {expected} samples in {category}, found {len(files)}")
-            for path in files[: args.limit or None]:
-                rows.append(dict(benchmark_id=path.parent.name, task=category, path=path))
-    return [dict(row, selection_index=index) for index, row in enumerate(rows)]
-
-
-async def run(args):
+async def run(
+    args,
+    selected,
+    *,
+    dataset_revision,
+    tail_seconds=0,
+    audio_file="output.wav",
+    response_boundary=None,
+    extract_response=None,
+    copy_annotations=False,
+):
     import numpy as np
     import soundfile as sf
     import torch
@@ -49,7 +29,6 @@ async def run(args):
 
     if not 0 <= args.shard < args.shards:
         raise ValueError("Require 0 <= shard < shards")
-    selected = samples(args)
     root, config = load_release(
         args.model, family="qwen", revision=args.revision, offline=args.offline
     )
@@ -68,8 +47,8 @@ async def run(args):
         kv_budget=args.kv_budget,
         benchmark=args.benchmark,
         limit=args.limit,
-        dataset_revision=DATASET_REVISION if args.benchmark == "voicebench" else "FDB-v1.0",
-        response_tail_seconds=20 if args.benchmark == "voicebench" else 0,
+        dataset_revision=dataset_revision,
+        response_tail_seconds=tail_seconds,
     )
     runtime = Runtime(str(root), kv_budget=args.kv_budget, seed=args.seed, offline=args.offline)
     started = time.perf_counter()
@@ -82,7 +61,7 @@ async def run(args):
             dest = args.output / item["task"] / item["benchmark_id"]
             receipt = dest / "result.json"
             source_hash = sha256(item["path"])
-            if args.benchmark == "voicebench" and source_hash != item["audio"]["sha256"]:
+            if "audio" in item and source_hash != item["audio"]["sha256"]:
                 raise ValueError(f"Input checksum mismatch: {item['benchmark_id']}")
             if receipt.exists():
                 old = json.loads(receipt.read_text())
@@ -96,11 +75,8 @@ async def run(args):
                 skipped += 1
                 continue
             pcm, wave = read_benchmark_audio(item["path"])
-            if args.benchmark == "voicebench":
-                boundary = last_audible_frame(wave) + 1
-                pcm += bytes(20 * 32000)
-            else:
-                boundary = None
+            boundary = response_boundary(wave) if response_boundary is not None else None
+            pcm += bytes(tail_seconds * 32000)
             source_samples = len(pcm) // 2
             if source_samples > runtime.max_context_frames * 1280:
                 raise ValueError(f"{item['benchmark_id']} exceeds KV budget; increase --kv-budget")
@@ -123,16 +99,15 @@ async def run(args):
                 raise RuntimeError("Output shorter than the input timeline")
             output = output[: expected * 2]
             text = (
-                response_text(summary, boundary, runtime.model.processor.tokenizer)
-                if boundary is not None
+                extract_response(summary, boundary, runtime.model.processor.tokenizer)
+                if extract_response is not None
                 else "".join(
                     event["text"] for event in summary["text_trace"] if event["kind"] == "text"
                 )
             )
             dest.mkdir(parents=True, exist_ok=True)
-            audio_file = "output.flac" if args.benchmark == "voicebench" else "output.wav"
             sf.write(dest / audio_file, np.frombuffer(output, dtype="<i2"), 24000, subtype="PCM_16")
-            if args.benchmark == "fdb":
+            if copy_annotations:
                 for annotation in item["path"].parent.glob("*.json"):
                     if annotation.name != "output.json":
                         shutil.copyfile(annotation, dest / annotation.name)
@@ -188,27 +163,20 @@ async def run(args):
     )
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("benchmark", choices=("voicebench", "fdb"))
-    parser.add_argument(
-        "--data", type=Path, required=True, help="VoiceBench manifest or FDB v1_0 directory"
-    )
+def arguments(description, *, benchmark, kv_budget, limit):
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--data", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--model", default="penguinfish1688/dialogue-to-duplex")
     parser.add_argument("--revision")
-    parser.add_argument("--offline", action="store_true", help="Use already downloaded model files")
+    parser.add_argument("--offline", action="store_true")
     parser.add_argument("--seed", type=int, default=1337)
-    parser.add_argument("--kv-budget", type=int, help="Default: 2048 for VoiceBench, 4096 for FDB")
-    parser.add_argument(
-        "--limit", type=int, help="Samples per task; default: 200 VoiceBench, all FDB"
-    )
+    parser.add_argument("--kv-budget", type=int, default=kv_budget)
+    parser.add_argument("--limit", type=int, default=limit, help="Samples per task")
     parser.add_argument("--shard", type=int, default=0)
     parser.add_argument("--shards", type=int, default=1)
+    parser.set_defaults(benchmark=benchmark)
     args = parser.parse_args()
-    if args.limit is None:
-        args.limit = 200 if args.benchmark == "voicebench" else 0
-    if args.limit < 0 or (args.benchmark == "voicebench" and args.limit == 0):
+    if args.limit < 0 or (limit > 0 and args.limit == 0):
         parser.error("limit must be positive (0 means all for FDB)")
-    args.kv_budget = args.kv_budget or (2048 if args.benchmark == "voicebench" else 4096)
-    asyncio.run(run(args))
+    return args

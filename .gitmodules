@@ -1,0 +1,6 @@
+[submodule "benchmarks/fdb/official"]
+	path = benchmarks/fdb/official
+	url = https://github.com/DanielLin94144/Full-Duplex-Bench.git
+[submodule "benchmarks/vb/official"]
+	path = benchmarks/vb/official
+	url = https://github.com/MatthewCYM/VoiceBench.git

@@ -5,7 +5,7 @@ import torch
 
 
 def common():
-    path = Path(__file__).resolve().parents[1] / "benchmarks/common.py"
+    path = Path(__file__).resolve().parents[1] / "benchmarks/vb/common.py"
     spec = importlib.util.spec_from_file_location("benchmark_common", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

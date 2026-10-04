@@ -9,7 +9,7 @@ import time
 import numpy as np
 import websockets
 from d2.audio import load_pcm, save_pcm
-from common import write_json
+from benchmarks.common import write_json
 
 
 async def check(args):

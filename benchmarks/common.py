@@ -1,30 +1,40 @@
-"""Pinned evaluation protocol and small file helpers."""
+"""Shared benchmark file and audio helpers."""
 
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 
-TASKS = (
-    "alpacaeval",
-    "commoneval",
-    "wildvoice",
-    "sd-qa",
-    "mmsu",
-    "openbookqa",
-    "bbh",
-    "ifeval",
-    "advbench",
-)
-DATASET_REVISION = "b02edcef1330480be3a11bd6f7434ac32f05ad08"
-VOICEBENCH_COMMIT = "3c3b0d3a7a956f745305eb348f5e03ce7ec73dad"
-DEFAULT_SAMPLE_LIMIT = 200
-ROLLOUT_FRAMES = 250
-VOICEBENCH_MANIFEST_CONTRACT = "d2_voicebench_fixed_subset_manifest_v1"
-FDB_CATEGORIES = {
-    "candor_turn_taking": 119,
-    "synthetic_user_interruption": 200,
-    "candor_pause_handling": 216,
-}
+
+def verify_upstream(path, commit):
+    """Require the pinned, unmodified official checkout."""
+    path = Path(path).resolve()
+    if not (path / ".git").exists():
+        raise ValueError("Initialize the official repositories: git submodule update --init")
+    actual = subprocess.check_output(
+        ["git", "-C", str(path), "rev-parse", "HEAD"], text=True
+    ).strip()
+    if actual != commit:
+        raise ValueError(f"Expected official revision {commit}, found {actual}")
+    dirty = subprocess.check_output(
+        ["git", "-C", str(path), "status", "--porcelain", "--untracked-files=no"], text=True
+    )
+    if dirty:
+        raise ValueError(f"Official checkout has local modifications: {path}")
+    return path
+
+
+def run_official(command, log, *, cwd=None):
+    """Save the official program's output without changing its scoring logic."""
+    log = Path(log)
+    log.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Running official evaluator; log: {log}", flush=True)
+    with log.open("w") as handle:
+        result = subprocess.run(command, cwd=cwd, stdout=handle, stderr=subprocess.STDOUT)
+    output = log.read_text()
+    print("\n".join(output.splitlines()[-8:]), flush=True)
+    result.check_returncode()
+    return output
 
 
 def sha256(path):
@@ -38,21 +48,6 @@ def write_json(path, value):
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(value, indent=2) + "\n")
     temporary.replace(path)
-
-
-def response_text(summary, start_frame, tokenizer):
-    """Use only the response beginning after the last audible user frame."""
-    started = False
-    tokens = []
-    for event in summary["text_trace"]:
-        kind = event["kind"]
-        if not started:
-            started = kind == "response" and event["frame"] >= start_frame
-        elif kind == "interrupt":
-            break
-        elif kind == "text":
-            tokens.append(event["token_id"])
-    return tokenizer.decode(tokens, skip_special_tokens=True) if tokens else ""
 
 
 def read_benchmark_audio(path):
@@ -73,20 +68,3 @@ def read_benchmark_audio(path):
         ).flatten()
     pcm = torch.round(wave.clamp(-1, 1) * 32767).to(torch.int16).numpy().astype("<i2").tobytes()
     return pcm, wave
-
-
-def last_audible_frame(wave):
-    """Last 80 ms frame in a >=20 ms run above -60 dBFS, before PCM rounding."""
-    import torch
-
-    blocks = torch.nn.functional.pad(wave, (0, -len(wave) % 160)).view(-1, 160)
-    active = (blocks.double().square().mean(1) >= 1e-6).tolist()
-    run = 0
-    last = None
-    for index, value in enumerate(active):
-        run = run + 1 if value else 0
-        if run >= 2:
-            last = min(len(wave), (index + 1) * 160) - 1
-    if last is None:
-        raise ValueError("Input has no qualifying audible run")
-    return last // 1280

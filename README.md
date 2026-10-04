@@ -2,7 +2,7 @@
 
 [Hugging Face](https://huggingface.co/penguinfish1688/dialogue-to-duplex) · [Quick Start](#quick-start) · [Fine-tuning](#fine-tuning) · [Evaluation](benchmarks/README.md)
 
-**Dialogue-to-Duplex (D2)** turns pretrained speech models into full-duplex conversational models that listen and speak at the same time. D2 learns when to respond, continue listening, and yield to interruptions.
+**Dialogue-to-Duplex (D2)** turns pretrained speech models into full-duplex spoken language models that listen and speak at the same time. D2 learns when to respond, continue listening, and yield to interruptions. D2 achieves strong performance on VoiceBench and Full-Duplex-Bench.
 
 D2 combines causal audio encoder distillation with dialogue fine-tuning, while keeping each model's native speech generator. This repository provides inference, a browser app, and fine-tuning for Qwen3-Omni and LLaMA-Omni2.
 
@@ -78,9 +78,39 @@ d2-qwen app --model my-d2
 
 See the model guides for training settings and trainable parameters.
 
-## Evaluation
+## Research Results
 
-See the [evaluation guide](benchmarks/README.md) to run VoiceBench and Full-Duplex-Bench. Results and figures are available on the [model card](https://huggingface.co/penguinfish1688/dialogue-to-duplex#research-results).
+The following figures and table summarize D2 research results across models and interaction intervals. Only the Qwen3-Omni 80 ms checkpoint is currently available for download.
+
+### VoiceBench
+
+![VoiceBench performance across interaction granularities](https://huggingface.co/penguinfish1688/dialogue-to-duplex/resolve/main/assets/voicebench.png)
+
+The Qwen3-Omni 80 ms model achieves an overall VoiceBench score of **70.07**. The horizontal axis shows interaction intervals.
+
+### Full-Duplex-Bench
+
+| Model | D2 interval (ms) | Quality / 5 ↑ | Turn taking (%) ↑ | Turn latency (s) ↓ | Interruption (%) ↑ | Interruption latency (s) ↓ | Pause success (%) ↑ |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **Qwen3-Omni-D2** | **80** | **4.56** | **99.2** | **0.521** | **99.5** | **0.403** | **21.3** |
+| Qwen3-Omni-D2 | 160 | 4.67 | 100 | 0.539 | 99.5 | 0.432 | 19.0 |
+| Qwen3-Omni-D2 | 320 | 4.61 | 100 | 0.710 | 99.5 | 0.571 | 25.5 |
+| Qwen3-Omni-D2 | 640 | 4.62 | 99.2 | 1.01 | 99.5 | 0.928 | 55.1 |
+| Qwen3-Omni-D2 | 1040 | 4.84 | 100 | 1.38 | 99.5 | 1.30 | 61.6 |
+| LLaMA-Omni2-D2 | 100 | 3.33 | 100 | 0.746 | 99.5 | 0.621 | 74.5 |
+| LLaMA-Omni2-D2 | 200 | 3.62 | 99.2 | 0.825 | 100 | 0.710 | 78.2 |
+| LLaMA-Omni2-D2 | 400 | 3.69 | 100 | 1.02 | 99.0 | 0.894 | 69.4 |
+| LLaMA-Omni2-D2 | 800 | 4.03 | 98.3 | 1.45 | 99.0 | 1.32 | 70.8 |
+| BayLing-Duplex | — | 3.55 | 85.7 | 5.57 | 100 | 5.19 | 72.2 |
+| Freeze-Omni | — | 3.82 | 34.5 | 0.288 | 98.5 | 0.349 | 69.4 |
+| MiniCPM-o 4.5 | — | 4.45 | 75.6 | 1.92 | 94.5 | 1.89 | 91.2 |
+| PersonaPlex | — | 4.43 | 99.2 | 0.346 | 95.0 | 0.294 | 31.9 |
+| Moshi | — | 3.40 | 100 | 0.615 | 89.5 | 1.23 | 0.0 |
+| Nemotron VoiceChat | — | 3.97 | 91.6 | 0.584 | 99.0 | 0.638 | 60.2 |
+
+Quality uses GPT-4o ratings on a 0–5 scale. Turn taking and interruption measure successful responses to user events; pause handling measures whether the model waits through a user's pause. Latencies are event-aligned acoustic gaps plus the interaction interval, excluding computation time.
+
+See the [evaluation guide](benchmarks/README.md) to run the benchmarks.
 
 ## Acknowledgments
 
