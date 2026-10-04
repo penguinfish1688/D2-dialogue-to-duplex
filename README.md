@@ -1,4 +1,6 @@
-# D2
+# Dialogue-to-Duplex
+
+**Currently, D2 releases only the Qwen3-Omni 80 ms checkpoint.**
 
 **Dialogue-to-Duplex** adapts pretrained speech models to listen and speak at the same time. D2 learns when to respond, continue listening, and stop speaking after an interruption.
 
@@ -37,21 +39,17 @@ The interval is part of the trained checkpoint; changing a command-line option c
 
 ## Checkpoints
 
-**D2 weights have not been uploaded yet.** The Hugging Face IDs are placeholders:
-
-- `HF_ORG/Qwen3-Omni-D2`
-- `HF_ORG/LLaMA-Omni2-D2`
-
-Until publication, supply a local release directory with `--model`. Each release contains `d2.json`, `d2.safetensors`, and `encoder.safetensors`. The JSON identifies the model family, trained interval, and pinned upstream assets. Loading verifies the parameter names and shapes. Upstream weights are downloaded into the normal Hugging Face cache; set `HF_HOME` to choose its location.
+[Dialogue-to-Duplex](https://huggingface.co/penguinfish1688/dialogue-to-duplex) (Qwen3-Omni, 80 ms) is public and is the default for `d2-qwen`. No Hugging Face login is needed. LLaMA weights are not published yet; `d2-llama` requires a local release with `--model`.
 
 ```bash
-# Replace MODEL with a local release or the eventual published HF ID.
-d2-qwen download --model MODEL
-d2-qwen infer --model MODEL --input question.wav --output response.wav
-d2-qwen app --model MODEL
+d2-qwen download
+d2-qwen infer --input question.wav --output response.wav --tail-seconds 20
+d2-qwen app
 ```
 
-Open `http://localhost:8000` for the microphone app. LLaMA uses the same commands with `d2-llama`. The app and WAV command share the inference implementation. Output is mono 24-kHz PCM. The WAV command also writes a JSON transcript/event trace and measured real-time factor (RTF).
+The first download needs approximately **73 GB** for the Qwen backbone and D2 weights, plus space for dependencies and caches. Set `HF_HOME` before running to choose the cache location. Downloads are reused across commands. Each D2 release contains `d2.json`, `d2.safetensors`, and `encoder.safetensors`; the loader checks parameter names and shapes and downloads the pinned backbone automatically. Use `--revision COMMIT` to pin a D2 release, `--offline` to require cached assets, or `--model PATH_OR_HF_ID` for another release.
+
+Open `http://localhost:8000` for the microphone app. For a remote GPU, run `ssh -L 8000:localhost:8000 user@gpu-host` on your computer, then open that same localhost URL. Use headphones. LLaMA uses the same commands with `d2-llama`. The app and WAV command share the inference implementation. Output is mono 24-kHz PCM. The WAV command also writes a JSON transcript/event trace and measured real-time factor (RTF). App acknowledgments report server processing time for measuring sustained streaming RTF; RTF below 1 means faster than real time.
 
 Inference uses native PyTorch, a fixed KV-cache allocation, CUDA graphs for decoder prefill and serial decoding, and the trained control protocol. The default Thinker budget is **2048 tokens**. Conversations stop when that budget is exhausted; start a new conversation or increase `--kv-budget`. The maximum duration, including the system prompt, is reported by the runtime. File inference appends eight seconds of silence by default; use `--tail-seconds` for a longer response.
 
@@ -97,3 +95,7 @@ tests/              Checkpoint, timing, cache, and app checks
 Each model directory is an installable Python package (`d2_qwen` or `d2_llama`). There are no dependencies on a private checkout or cluster directory.
 
 Upstream projects: [Qwen3-Omni](https://github.com/QwenLM/Qwen3-Omni), [LLaMA-Omni2](https://github.com/ictnlp/LLaMA-Omni2), [Transformers](https://github.com/huggingface/transformers), [Whisper](https://github.com/openai/whisper), [CosyVoice](https://github.com/FunAudioLLM/CosyVoice), and [Matcha-TTS](https://github.com/shivammehta25/Matcha-TTS). Their code and model licenses apply to those dependencies.
+
+## Benchmarks
+
+See [benchmarks/README.md](benchmarks/README.md) for the fixed VoiceBench selection (200 examples per task), Full-Duplex-Bench, and a paced app test. Reported research scores and fresh public-release measurements are kept separate.

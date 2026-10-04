@@ -8,14 +8,14 @@ From the repository root, in a Python 3.12 environment:
 
 ```bash
 pip install -c qwen3-omni-D2/configs/requirements.txt -e '.[qwen]'
-d2-qwen download --model MODEL
-d2-qwen infer --model MODEL --input question.wav --output response.wav
-d2-qwen app --model MODEL
+d2-qwen download
+d2-qwen infer --input question.wav --output response.wav --tail-seconds 20
+d2-qwen app
 # Equivalent app entry point:
-python -m d2_qwen.app --model MODEL
+python -m d2_qwen.app
 ```
 
-`MODEL` is a local release directory or an eventual Hugging Face ID. The default `HF_ORG/Qwen3-Omni-D2` is a placeholder. Use `--revision COMMIT` to pin a hosted D2 release and `--offline` to require cached assets. Dependencies are pinned to PyTorch 2.11 and Transformers 5.13.
+The default is the public [80 ms checkpoint](https://huggingface.co/penguinfish1688/dialogue-to-duplex). No login is required. Pass `--model PATH_OR_HF_ID` to select another release. Downloading the backbone and D2 weights needs about 73 GB of disk space; set `HF_HOME` to select the cache directory. Use `--revision COMMIT` to pin a hosted D2 release and `--offline` to require cached assets. Dependencies are pinned to PyTorch 2.11 and Transformers 5.13.
 
 The app listens on localhost:8000. Use headphones. For a remote GPU, forward port 8000 over SSH; microphone access works on localhost. Only one conversation can use a model instance at a time.
 
@@ -35,7 +35,7 @@ Inference uses BF16 model computation and PyTorch-compiled native `grouped_mm` e
 ## Fine-tune
 
 ```bash
-d2-qwen train --model MODEL --data samples.json --output my-qwen-d2 --steps 3
+d2-qwen train --data samples.json --output my-qwen-d2 --steps 3
 ```
 
 Samples use the [shared manifest format](../d2/SAMPLES.md). The model has **266,286,976** trainable parameters: rank-128 Thinker/Talker/context/CodePredictor adapters, codec interfaces and small parameters, control/stream rows, and the current encoder SFT parameters. Routed experts remain frozen. Encoder SFT trains its convolution frontend, rank-32 attention adapters, and existing rank-32 non-attention adapters.
@@ -43,3 +43,5 @@ Samples use the [shared manifest format](../d2/SAMPLES.md). The model has **266,
 Loss is text CE plus codec CE. PAD weight is 0.05, RESPONSE/INTERRUPT weights are 20, codec EOS weight is 20, and the 16 codebook weights are 1. Optimizer groups and their peak/minimum rates are in [configs/train.json](configs/train.json). Warmup lasts 200 updates, followed by cosine decay through update 2000. AdamW uses betas `(0.9, 0.999)`, epsilon `1e-8`, no weight decay, and gradient-norm clipping at 1.0.
 
 The release manifest schema is illustrated in [configs/release.json](configs/release.json). `encoder.safetensors` contains the distilled encoder trainables; `d2.safetensors` contains the complete current SFT trainable inventory. No optimizer, dataset, or research-run metadata is required for inference.
+
+[Benchmark reproduction and paced app test](../benchmarks/README.md). The app sends processing time in each acknowledgment so streaming RTF can be measured independently of microphone pacing.

@@ -3,6 +3,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 import json
+import time
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
@@ -46,13 +47,19 @@ def create_app(runtime):
                 payload = message.get("bytes")
                 if payload is None or len(payload) > 64000:
                     raise ValueError("Expected at most two seconds of PCM16 per packet")
+                started = time.perf_counter()
                 batch = await session.push_pcm16(payload)
+                processing_seconds = time.perf_counter() - started
                 # Publish each native frame in order. The model has already
                 # cleared unplayed speech on an interrupt.
                 for pcm, event in zip(batch.pcm_frames, batch.frame_events, strict=True):
                     await socket.send_json({**event, "type": "event"})
                     await socket.send_bytes(pcm)
-                await socket.send_json(dict(type="ack", samples=len(payload) // 2))
+                await socket.send_json(
+                    dict(
+                        type="ack", samples=len(payload) // 2, processing_seconds=processing_seconds
+                    )
+                )
         except WebSocketDisconnect:
             pass
         except Exception as error:

@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 MODEL_IDS = {
-    "qwen": "HF_ORG/Qwen3-Omni-D2",
+    "qwen": "penguinfish1688/dialogue-to-duplex",
     "llama": "HF_ORG/LLaMA-Omni2-D2",
 }
 FORMAT = "d2.release.v1"
@@ -18,9 +18,9 @@ def snapshot(source: str, *, revision: str | None = None, offline: bool = False)
         return path.resolve()
     if "HF_ORG" in source or "PLACEHOLDER" in source:
         raise ValueError(
-            "D2 checkpoints have not been uploaded to Hugging Face yet. "
-            "Pass --model /path/to/a/local/release, or replace the placeholder "
-            "with the published repository ID when available."
+            "This model's checkpoint has not been uploaded to Hugging Face yet. "
+            "Pass --model /path/to/a/local/release. Qwen 80 ms is available as "
+            "penguinfish1688/dialogue-to-duplex."
         )
     if path.is_absolute() or source.startswith(("./", "../", "~")):
         raise FileNotFoundError(f"Model directory does not exist: {path}")

@@ -92,6 +92,8 @@ def test_browser_transport_uses_native_pcm_and_closes_session():
             socket.send_bytes(bytes(3200))
             assert socket.receive_json() == dict(type="event", token_id=9, text_delta="hello")
             assert socket.receive_bytes() == bytes(4800)
-            assert socket.receive_json() == dict(type="ack", samples=1600)
+            ack = socket.receive_json()
+            assert ack["type"] == "ack" and ack["samples"] == 1600
+            assert ack["processing_seconds"] >= 0
             socket.send_json(dict(type="stop"))
     assert runtime.session.closed

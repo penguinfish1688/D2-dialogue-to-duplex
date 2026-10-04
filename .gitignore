@@ -53,3 +53,7 @@ paper/
 *.pdf
 *.tex
 *.bib
+
+# Downloaded benchmarks and reproduction outputs
+bench-data/
+results/
