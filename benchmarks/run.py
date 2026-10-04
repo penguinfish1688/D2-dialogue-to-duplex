@@ -50,7 +50,9 @@ async def run(args):
     if not 0 <= args.shard < args.shards:
         raise ValueError("Require 0 <= shard < shards")
     selected = samples(args)
-    root, config = load_release(args.model, family="qwen", revision=args.revision)
+    root, config = load_release(
+        args.model, family="qwen", revision=args.revision, offline=args.offline
+    )
     if config["latency_ms"] != 80:
         raise ValueError("This reproduction protocol is for the 80 ms release")
     identity = dict(
@@ -69,7 +71,7 @@ async def run(args):
         dataset_revision=DATASET_REVISION if args.benchmark == "voicebench" else "FDB-v1.0",
         response_tail_seconds=20 if args.benchmark == "voicebench" else 0,
     )
-    runtime = Runtime(str(root), kv_budget=args.kv_budget, seed=args.seed)
+    runtime = Runtime(str(root), kv_budget=args.kv_budget, seed=args.seed, offline=args.offline)
     started = time.perf_counter()
     await runtime.load()
     load_seconds = time.perf_counter() - started
@@ -195,6 +197,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--model", default="penguinfish1688/dialogue-to-duplex")
     parser.add_argument("--revision")
+    parser.add_argument("--offline", action="store_true", help="Use already downloaded model files")
     parser.add_argument("--seed", type=int, default=1337)
     parser.add_argument("--kv-budget", type=int, help="Default: 2048 for VoiceBench, 4096 for FDB")
     parser.add_argument(
