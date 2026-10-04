@@ -39,6 +39,18 @@ FDB uses a fixed 4096-token KV budget so the longest input (94 seconds) fits wit
 
 Use the pinned [upstream ASR and evaluation scripts](https://github.com/DanielLin94144/Full-Duplex-Bench/tree/3e799c45a045256f47d5f1c9cda90157e2d2ec9e/v1_v1.5) to transcribe and score the output. ASR requires its separate NeMo environment and `nvidia/parakeet-tdt-0.6b-v2`; install the upstream ASR requirements separately from Qwen. Interruption transcription crops at the annotated interruption end. The model card's latency convention is the event-aligned acoustic gap plus 80 ms, excluding device computation time.
 
+After transcription, compute the table metrics and optional GPT quality:
+
+```bash
+git clone https://github.com/DanielLin94144/Full-Duplex-Bench.git bench-data/Full-Duplex-Bench
+git -C bench-data/Full-Duplex-Bench checkout 3e799c45a045256f47d5f1c9cda90157e2d2ec9e
+python benchmarks/score_fdb.py --run results/fdb
+# With OPENAI_API_KEY set:
+python benchmarks/score_fdb.py --run results/fdb --judge
+```
+
+Quality judging uses the pinned upstream prompt, `gpt-4o-2024-08-06`, and seed 0, and incurs API charges. Each sample's rating is saved so interrupted scoring can resume. Turn-taking requires at least one second of transcribed response or more than three words; the latency calculation uses qualifying words after the annotated user event. Missing quality ratings remain unreported.
+
 ## App: sustained real-time streaming
 
 Start the app with `d2-qwen app`, then run this in another terminal:
