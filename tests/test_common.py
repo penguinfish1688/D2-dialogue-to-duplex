@@ -1,9 +1,11 @@
+import asyncio
 import json
 from types import SimpleNamespace
 
 import pytest
 import torch
 from fastapi.testclient import TestClient
+from fastapi import WebSocketDisconnect
 from safetensors.torch import save_file
 
 from d2.hub import load_release, snapshot
@@ -109,4 +111,28 @@ def test_browser_transport_uses_native_pcm_and_closes_session():
             assert ack["type"] == "ack" and ack["samples"] == 1600
             assert ack["processing_seconds"] >= 0
             socket.send_json(dict(type="stop"))
+    assert runtime.session.closed
+
+
+@pytest.mark.parametrize("invalid_packet", [False, True])
+def test_browser_disconnect_during_cleanup_releases_session(invalid_packet):
+    runtime = Runtime()
+    app = create_app(runtime)
+    endpoint = next(route.endpoint for route in app.routes if route.path == "/stream")
+
+    class ClosedSocket:
+        async def accept(self):
+            pass
+
+        async def send_json(self, message):
+            if message["type"] == "error":
+                raise WebSocketDisconnect(1006)
+
+        async def receive(self):
+            return {"type": "websocket.receive" if invalid_packet else "websocket.disconnect"}
+
+        async def close(self):
+            raise WebSocketDisconnect(1006)
+
+    asyncio.run(endpoint(ClosedSocket()))
     assert runtime.session.closed

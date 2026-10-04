@@ -65,14 +65,14 @@ def create_app(runtime):
         except Exception as error:
             try:
                 await socket.send_json(dict(type="error", message=str(error)))
-            except RuntimeError:
+            except (RuntimeError, WebSocketDisconnect):
                 pass
         finally:
             if session is not None:
                 await session.close()
             try:
                 await socket.close()
-            except RuntimeError:
+            except (RuntimeError, WebSocketDisconnect):
                 pass
 
     return app
