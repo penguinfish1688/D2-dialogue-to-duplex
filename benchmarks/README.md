@@ -2,7 +2,7 @@
 
 Run these commands from the repository root after the Qwen installation. They use the same public inference runtime as the app. Set `HF_HOME` to a disk with room for the model. No research repository is needed.
 
-The HF model card's scores are the existing research results. A fresh release run must be scored before claiming that those results reproduce. Sampling, BF16 kernels, and API judges can change individual answers. This runner resets sampling to `--seed 1337` for each sample, independently of sharding and resume order. Historical research runs advanced a worker-local seed between sessions and used a larger fixed KV allocation; this runner does not recreate those exact random streams or promise identical responses.
+The [completed public-release evaluation](RESULTS.md) scored 69.05 on VoiceBench versus 70.07 historically, and 4.58/5 FDB quality versus 4.56. The HF card labels historical results and fresh measurements separately. Sampling, BF16 kernels, and API judges can change individual answers. This runner resets sampling to `--seed 1337` for each sample, independently of sharding and resume order. Historical research runs advanced a worker-local seed between sessions and used a larger fixed KV allocation; this runner does not recreate those exact random streams or promise identical responses.
 
 ## VoiceBench: 200 examples per task
 
