@@ -1,5 +1,7 @@
 # LLaMA-Omni2 D2
 
+LLaMA-Omni2 D2 checkpoints are not released yet. Currently, D2 releases only the [Qwen3-Omni 80 ms checkpoint](https://huggingface.co/penguinfish1688/dialogue-to-duplex).
+
 A causal Whisper-large-v3 encoder, the released LLaMA-Omni2 Qwen2 Thinker, its native speech generator, and CosyVoice2 waveform rendering. Every interval retains the native **100-ms** text/playback clock and **25-Hz** speech-unit clock.
 
 ## Install and run

@@ -30,7 +30,7 @@ Their Transformers versions differ. Keep the environments separate.
 
 The constraint files pin transitive dependencies as well as model libraries.
 
-| Model | Interaction intervals | Instructions |
+| Model | Intervals supported by the code | Instructions |
 | --- | --- | --- |
 | Qwen3-Omni D2 | 80, 160, 320, 640, 1040 ms | [Qwen README](qwen3-omni-D2/README.md) |
 | LLaMA-Omni2 D2 | 100, 200, 400, 800 ms | [LLaMA README](llama-omni2-D2/README.md) |
