@@ -35,7 +35,7 @@ Download the [upstream v1.0 data](https://github.com/DanielLin94144/Full-Duplex-
 python benchmarks/run.py fdb --data /path/to/v1_0 --output results/fdb
 ```
 
-FDB uses a fixed 4096-token KV budget so the longest input (94 seconds) fits without truncation. It preserves each input's duration, adds no response tail, and saves `output.wav` plus annotations in the upstream directory layout. VoiceBench and the app default to 2048 tokens. Every sample is checked against the allocated budget before inference.
+FDB uses a fixed 4096-token KV budget so the longest input (94 seconds) fits without truncation. It preserves each input's duration, adds no response tail, and saves `output.wav` plus annotations in the upstream directory layout. Each `result.json` also includes generated dialogue text, the control trace, and timing; FDB scoring uses the ASR transcript of the waveform. VoiceBench and the app default to 2048 tokens. Every sample is checked against the allocated budget before inference.
 
 Use the pinned [upstream ASR and evaluation scripts](https://github.com/DanielLin94144/Full-Duplex-Bench/tree/3e799c45a045256f47d5f1c9cda90157e2d2ec9e/v1_v1.5) to transcribe and score the output. ASR requires its separate NeMo environment and `nvidia/parakeet-tdt-0.6b-v2`; install the upstream ASR requirements separately from Qwen. Interruption transcription crops at the annotated interruption end. The model card's latency convention is the event-aligned acoustic gap plus 80 ms, excluding device computation time.
 

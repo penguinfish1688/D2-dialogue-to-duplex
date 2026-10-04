@@ -123,7 +123,9 @@ async def run(args):
             text = (
                 response_text(summary, boundary, runtime.model.processor.tokenizer)
                 if boundary is not None
-                else summary.get("generated_text", "")
+                else "".join(
+                    event["text"] for event in summary["text_trace"] if event["kind"] == "text"
+                )
             )
             dest.mkdir(parents=True, exist_ok=True)
             audio_file = "output.flac" if args.benchmark == "voicebench" else "output.wav"
