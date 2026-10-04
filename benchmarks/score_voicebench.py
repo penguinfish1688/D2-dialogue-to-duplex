@@ -1,6 +1,7 @@
 """Score the fixed VoiceBench run using pinned upstream evaluators."""
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import importlib
 import importlib.util
 import json
@@ -65,7 +66,8 @@ def score(args):
             cache = exports / f"{task}-judged"
             cache.mkdir(exist_ok=True)
             votes = []
-            for row in records:
+
+            def judge_row(row):
                 path = cache / (row["benchmark_id"] + ".json")
                 if path.exists():
                     result = json.loads(path.read_text())
@@ -75,6 +77,13 @@ def score(args):
                     result = judge.generate(dict(row))
                     write_json(path, result)
                 else:
+                    return None
+                return result
+
+            with ThreadPoolExecutor(max_workers=args.workers) as pool:
+                results = list(pool.map(judge_row, records))
+            for result in results:
+                if result is None:
                     continue
                 values = result.get("score", [])
                 if len(values) != 3:
@@ -119,6 +128,7 @@ if __name__ == "__main__":
         "--upstream", type=Path, default=Path("bench-data/voicebench/upstream/VoiceBench")
     )
     parser.add_argument("--limit", type=int, default=200)
+    parser.add_argument("--workers", type=int, default=4, help="Concurrent API judge requests")
     parser.add_argument(
         "--judge", action="store_true", help="Use OPENAI_API_KEY for the four API-scored tasks"
     )

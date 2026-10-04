@@ -25,7 +25,7 @@ python benchmarks/score_voicebench.py --run results/voicebench
 python benchmarks/score_voicebench.py --run results/voicebench --judge
 ```
 
-The official GPT-4o-mini judge uses three votes for AlpacaEval, CommonEval, WildVoice, and SD-QA. API judging incurs charges. The other five tasks use the pinned upstream evaluators. Missing API scores remain pending; they are never estimated. The overall score is the mean of all nine 0–100 task scores; open-ended 1–5 ratings are multiplied by 20. Results are written to `results/voicebench/scores/metrics.json`.
+The official GPT-4o-mini judge uses three votes for AlpacaEval, CommonEval, WildVoice, and SD-QA. API judging incurs charges and runs four requests concurrently (`--workers 4`), matching the upstream concurrency. Each completed judgment is cached for resuming. The other five tasks use the pinned upstream evaluators. Missing API scores remain pending; they are never estimated. The overall score is the mean of all nine 0–100 task scores; open-ended 1–5 ratings are multiplied by 20. Results are written to `results/voicebench/scores/metrics.json`.
 
 ## Full-Duplex-Bench
 
