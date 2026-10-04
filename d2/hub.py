@@ -24,9 +24,15 @@ def snapshot(source: str, *, revision: str | None = None, offline: bool = False)
         )
     if path.is_absolute() or source.startswith(("./", "../", "~")):
         raise FileNotFoundError(f"Model directory does not exist: {path}")
-    from huggingface_hub import snapshot_download
+    from huggingface_hub import constants, snapshot_download
 
-    return Path(snapshot_download(repo_id=source, revision=revision, local_files_only=offline))
+    return Path(
+        snapshot_download(
+            repo_id=source,
+            revision=revision,
+            local_files_only=offline or constants.HF_HUB_OFFLINE,
+        )
+    )
 
 
 def load_release(

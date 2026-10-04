@@ -47,7 +47,7 @@ d2-qwen infer --input question.wav --output response.wav --tail-seconds 20
 d2-qwen app
 ```
 
-The first download needs approximately **73 GB** for the Qwen backbone and D2 weights, plus space for dependencies and caches. Set `HF_HOME` before running to choose the cache location. Downloads are reused across commands. Each D2 release contains `d2.json`, `d2.safetensors`, and `encoder.safetensors`; the loader checks parameter names and shapes and downloads the pinned backbone automatically. Use `--revision COMMIT` to pin a D2 release, `--offline` to require cached assets, or `--model PATH_OR_HF_ID` for another release.
+The first download needs approximately **73 GB** for the Qwen backbone and D2 weights, plus space for dependencies and caches. Set `HF_HOME` before running to choose the cache location. Downloads are reused across commands. Each D2 release contains `d2.json`, `d2.safetensors`, and `encoder.safetensors`; the loader checks parameter names and shapes and downloads the pinned backbone automatically. Use `--revision COMMIT` to pin a D2 release, `--offline` (or `HF_HUB_OFFLINE=1`) to require cached assets, or `--model PATH_OR_HF_ID` for another release.
 
 Open `http://localhost:8000` for the microphone app. For a remote GPU, run `ssh -L 8000:localhost:8000 user@gpu-host` on your computer, then open that same localhost URL. Use headphones. LLaMA uses the same commands with `d2-llama`. The app and WAV command share the inference implementation. Output is mono 24-kHz PCM. The WAV command also writes a JSON transcript/event trace and measured real-time factor (RTF). App acknowledgments report server processing time for measuring sustained streaming RTF; RTF below 1 means faster than real time.
 

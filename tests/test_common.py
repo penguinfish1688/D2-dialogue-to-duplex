@@ -28,6 +28,19 @@ def test_placeholder_fails_before_network():
         snapshot("HF_ORG/Qwen3-Omni-D2")
 
 
+def test_offline_environment_forces_cached_snapshot(monkeypatch, tmp_path):
+    import huggingface_hub
+    from huggingface_hub import constants
+
+    def download(**kwargs):
+        assert kwargs["local_files_only"] is True
+        return str(tmp_path)
+
+    monkeypatch.setattr(constants, "HF_HUB_OFFLINE", True)
+    monkeypatch.setattr(huggingface_hub, "snapshot_download", download)
+    assert snapshot("example/model") == tmp_path
+
+
 def test_release_rejects_wrong_family_and_latency(tmp_path):
     save_file({"weight": torch.zeros(1)}, str(tmp_path / "d2.safetensors"))
     manifest = dict(format="d2.release.v1", family="qwen", latency_ms=80)
