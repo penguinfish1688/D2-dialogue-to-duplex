@@ -1,0 +1,13 @@
+{
+  "format": "d2.release.v1",
+  "family": "llama",
+  "latency_ms": 100,
+  "base_model": {
+    "repo_id": "ICTNLP/LLaMA-Omni2-7B-Bilingual",
+    "revision": "1fecdd98c361fe50a40b58b78738e3bc690ca349"
+  },
+  "renderer": {
+    "repo_id": "ICTNLP/cosy2_decoder",
+    "revision": "7ff21e8e641b00cff2e0492651d654d153b21211"
+  }
+}

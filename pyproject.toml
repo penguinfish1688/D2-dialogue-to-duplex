@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "d2-dialogue-to-duplex"
+version = "0.1.0"
+description = "Streaming full-duplex speech with Qwen3-Omni and LLaMA-Omni2"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "numpy==1.26.4", "soundfile==0.13.1", "scipy==1.16.3",
+  "safetensors>=0.4.3", "huggingface-hub>=0.25.1",
+  "fastapi>=0.115,<1", "uvicorn[standard]>=0.34,<1",
+]
+
+[project.optional-dependencies]
+qwen = ["torch==2.11.0", "torchaudio==2.11.0", "transformers==5.13.0", "accelerate>=1.12,<2", "librosa==0.11.0", "torchvision==0.26.0", "Pillow>=11"]
+llama = ["torch==2.11.0", "torchaudio==2.11.0", "transformers==4.43.4", "huggingface-hub==0.25.1", "accelerate==0.33.0", "openai-whisper==20250625", "sentencepiece==0.2.1", "diffusers==0.27.2", "conformer==0.3.2", "einops==0.6.1", "HyperPyYAML==1.2.2", "ruamel.yaml==0.18.6", "PyYAML==6.0.3", "omegaconf==2.3.0", "onnxruntime>=1.18"]
+test = ["pytest>=8,<10", "httpx>=0.27,<1", "ruff>=0.12"]
+
+[project.scripts]
+d2-qwen = "d2_qwen.cli:main"
+d2-llama = "d2_llama.cli:main"
+
+[tool.setuptools]
+packages = ["d2", "d2_qwen", "d2_qwen.model", "d2_qwen.inference", "d2_qwen.training", "d2_qwen.app", "d2_llama", "d2_llama.core", "d2_llama.data", "d2_llama.model", "d2_llama.inference", "d2_llama.training", "d2_llama.app"]
+
+[tool.setuptools.package-dir]
+d2 = "d2"
+d2_qwen = "qwen3-omni-D2"
+d2_llama = "llama-omni2-D2"
+
+[tool.setuptools.package-data]
+d2 = ["client/*.html", "client/*.js", "*.md"]
+d2_qwen = ["configs/*.json", "configs/*.txt", "README.md"]
+d2_llama = ["configs/*.json", "configs/*.yaml", "configs/*.txt", "README.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.uv]
+conflicts = [[{ extra = "qwen" }, { extra = "llama" }]]

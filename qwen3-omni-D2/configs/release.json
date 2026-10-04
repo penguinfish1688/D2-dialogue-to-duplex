@@ -1,0 +1,9 @@
+{
+  "format": "d2.release.v1",
+  "family": "qwen",
+  "latency_ms": 80,
+  "base_model": {
+    "repo_id": "Qwen/Qwen3-Omni-30B-A3B-Instruct",
+    "revision": "26291f793822fb6be9555850f06dfe95f2d7e695"
+  }
+}

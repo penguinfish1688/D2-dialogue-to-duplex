@@ -1,75 +1,99 @@
 # D2
 
-**Dialogue-to-Duplex** adapts pretrained turn-based speech models for
-simultaneous listening and speaking. The goal is to preserve their speech
-understanding and general capabilities while enabling natural turn-taking and
-interruption handling.
+**Dialogue-to-Duplex** adapts pretrained speech models to listen and speak at the same time. D2 learns when to respond, continue listening, and stop speaking after an interruption.
 
-**Code release in preparation.** This repository currently contains only the
-project skeleton. Training, inference, apps, and model weights are not available
-yet.
+The conversion has two stages: distill a causal audio encoder from the original encoder, then fine-tune the speech model on dialogue timelines containing silence, overlap, and interruptions. At each interaction interval, the model reads user audio and its previously played audio, then produces text and speech. Each model keeps its native audio codec and speech generator.
 
-## How it works
+## Start here
 
-D2 treats dialogue as a sequence of short interaction intervals. During each
-interval, the model receives new user audio and its own audio from the previous
-interval, then generates the next text and speech outputs. Listening continues
-while the model speaks.
+Use Linux, Python 3.12, an NVIDIA CUDA GPU, and a compatible driver. The full Qwen model needs substantial GPU memory; validation uses an RTX Pro 6000 with 96 GB. Install `git`, `ffmpeg`, and `libsndfile` through your system package manager. Qwen also needs a C++ compiler and Python 3.12 development headers for its native PyTorch kernels.
 
-The conversion has two stages:
-
-1. **Streaming encoder distillation.** Adapt the original audio encoder to
-   process incoming chunks, using the unchanged encoder as a teacher. The
-   student can attend within the current chunk and to past chunks, but cannot
-   see future audio.
-2. **Duplex fine-tuning.** Place user and assistant speech on a shared timeline
-   containing silence, overlap, and interruptions. Train the model to produce
-   speech and control when to respond or yield, following the same temporal
-   order used at inference.
-
-The interaction interval is configurable, allowing the tradeoff between
-responsiveness and general capability to be studied across both backbones.
-
-## Structure
-
-```text
-.
-├── qwen3-omni-D2/
-│   ├── configs/       Training and inference configurations
-│   ├── model/         Qwen3-Omni duplex model and streaming encoder
-│   ├── training/      Encoder distillation and duplex fine-tuning
-│   ├── inference/     Streaming inference and playback
-│   └── app/           Interactive speech demo
-├── llama-omni2-D2/
-│   ├── configs/       Training and inference configurations
-│   ├── model/         LLaMA-Omni2 duplex model and streaming encoder
-│   ├── training/      Encoder distillation and duplex fine-tuning
-│   ├── inference/     Streaming inference and playback
-│   └── app/           Interactive speech demo
-├── data/              Shared dataset preparation
-└── evaluation/        Benchmark runners and scoring
+```bash
+git clone https://github.com/penguinfish1688/D2-dialogue-to-duplex.git
+cd D2-dialogue-to-duplex
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
 ```
 
-These directories are placeholders for the planned release. Each model will
-keep one implementation across its granularity settings. Its app will use the
-same streaming inference code as its command-line runner.
+Install **one** model per environment:
 
-## Planned models
+```bash
+pip install -c qwen3-omni-D2/configs/requirements.txt -e '.[qwen]'
+# Or, in a separate environment:
+pip install -c llama-omni2-D2/configs/requirements.txt -e '.[llama]'
+```
 
-| Model | Interaction granularity |
-| --- | --- |
-| [Qwen3-Omni D2](qwen3-omni-D2/) | 80, 160, 320, 640, 1040 ms |
-| [LLaMA-Omni2 D2](llama-omni2-D2/) | 100, 200, 400, 800 ms |
+Their Transformers versions differ. Keep the environments separate.
 
-These are configuration targets for the release, not measured response latencies.
+The constraint files pin transitive dependencies as well as model libraries.
 
-## Release plan
+| Model | Interaction intervals | Instructions |
+| --- | --- | --- |
+| Qwen3-Omni D2 | 80, 160, 320, 640, 1040 ms | [Qwen README](qwen3-omni-D2/README.md) |
+| LLaMA-Omni2 D2 | 100, 200, 400, 800 ms | [LLaMA README](llama-omni2-D2/README.md) |
 
-- [x] Publish the repository skeleton.
-- [ ] Add model code, inference, setup instructions, and checkpoint loading.
-- [ ] Add an interactive app for each model.
-- [ ] Add data preparation, encoder distillation, and duplex training recipes.
-- [ ] Add Full-Duplex-Bench and VoiceBench evaluation and reproducible results.
+The interval is part of the trained checkpoint; changing a command-line option cannot turn one checkpoint into another interval.
 
-Datasets, weights, generated audio, caches, and experiment logs stay outside Git.
-Download instructions and dependency attribution will accompany the code release.
+## Checkpoints
+
+**D2 weights have not been uploaded yet.** The Hugging Face IDs are placeholders:
+
+- `HF_ORG/Qwen3-Omni-D2`
+- `HF_ORG/LLaMA-Omni2-D2`
+
+Until publication, supply a local release directory with `--model`. Each release contains `d2.json`, `d2.safetensors`, and `encoder.safetensors`. The JSON identifies the model family, trained interval, and pinned upstream assets. Loading verifies the parameter names and shapes. Upstream weights are downloaded into the normal Hugging Face cache; set `HF_HOME` to choose its location.
+
+```bash
+# Replace MODEL with a local release or the eventual published HF ID.
+d2-qwen download --model MODEL
+d2-qwen infer --model MODEL --input question.wav --output response.wav
+d2-qwen app --model MODEL
+```
+
+Open `http://localhost:8000` for the microphone app. LLaMA uses the same commands with `d2-llama`. The app and WAV command share the inference implementation. Output is mono 24-kHz PCM. The WAV command also writes a JSON transcript/event trace and measured real-time factor (RTF).
+
+Inference uses native PyTorch, a fixed KV-cache allocation, CUDA graphs for decoder prefill and serial decoding, and the trained control protocol. The default Thinker budget is **2048 tokens**. Conversations stop when that budget is exhausted; start a new conversation or increase `--kv-budget`. The maximum duration, including the system prompt, is reported by the runtime. File inference appends eight seconds of silence by default; use `--tail-seconds` for a longer response.
+
+The system prompt is hardcoded, matching InstructS2S training:
+
+> You are a helpful spoken conversational assistant. Respond naturally when the user finishes speaking.
+
+It is inserted once, before the first audio interval. There is no app setting that changes it.
+
+## Fine-tuning
+
+Use a local or downloaded release and a manifest of prepared samples:
+
+```bash
+d2-qwen train --model MODEL --data samples.json --output my-d2 --steps 3
+# Or:
+d2-llama train --model MODEL --data samples.json --output my-d2 --steps 3
+```
+
+This is a small single-GPU fine-tuning loop. It uses the original model losses, parameter groups, BF16 compute, FP32 trainable weights, AdamW, and gradient clipping. It writes a new release directory that can be passed directly to `infer`, `app`, or `train`. Each invocation starts a new optimizer; optimizer-state resume and distributed orchestration are outside this interface.
+
+See [sample format](d2/SAMPLES.md) and the model READMEs for tensor shapes and training defaults. Data, model weights, generated audio, and run logs belong outside Git.
+
+## Validation
+
+The 80-ms Qwen and 100-ms LLaMA paths were tested on RTX Pro 6000 GPUs using separate Python 3.12 environments and local D2 releases. Both completed three optimizer updates, saved and reloaded their checkpoints, and generated coherent spoken answers verified with Whisper ASR. The app's WebSocket path was exercised with real model output and 40-ms microphone-sized packets, including repeated conversations. Physical browser microphone/speaker operation has not been tested.
+
+At update 1, Qwen's finite training loss was **0.46766442** and LLaMA's was **2.21675825**. Separate comparisons matched the original training forward losses bit for bit at the same weights and samples over three updates. These comparisons do not establish an independently trained, bitwise-identical trajectory from scratch.
+
+On a 4.25-second question followed by 20 seconds of silence, warm streaming RTF was approximately **0.76 for Qwen** and **0.75 for LLaMA**, with a 2048-token Thinker budget. RTF is wall time divided by the complete input-plus-silence timeline; model loading and session initialization are excluded. **The 0.6 RTF target has not been reached.** These are sample smoke measurements, not a quality or throughput benchmark across all interaction intervals. Inference uses BF16 kernels and is not promised to be bitwise deterministic; the seed controls sampling.
+
+The wheel builds with its configs and browser assets. Dependency checks and CPU tests pass in both model environments. To run the CPU checks, install `.[test]` alongside your model extra and run `python -m pytest`; tests for the other model's Transformers version are skipped.
+
+## Repository
+
+```text
+d2/                 Shared checkpoint loading, PCM I/O, training loop, browser UI
+qwen3-omni-D2/       Qwen model/, inference/, training/, app/, configs/
+llama-omni2-D2/      LLaMA model/, inference/, training/, app/, configs/
+tests/              Checkpoint, timing, cache, and app checks
+```
+
+Each model directory is an installable Python package (`d2_qwen` or `d2_llama`). There are no dependencies on a private checkout or cluster directory.
+
+Upstream projects: [Qwen3-Omni](https://github.com/QwenLM/Qwen3-Omni), [LLaMA-Omni2](https://github.com/ictnlp/LLaMA-Omni2), [Transformers](https://github.com/huggingface/transformers), [Whisper](https://github.com/openai/whisper), [CosyVoice](https://github.com/FunAudioLLM/CosyVoice), and [Matcha-TTS](https://github.com/shivammehta25/Matcha-TTS). Their code and model licenses apply to those dependencies.

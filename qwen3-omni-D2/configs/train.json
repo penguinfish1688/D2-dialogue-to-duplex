@@ -1,0 +1,21 @@
+{
+  "learning_rates": {
+    "thinker_lora": 5e-05,
+    "talker_lora": 5e-05,
+    "talker_context_lora": 5e-05,
+    "code_predictor_lora": 5e-05,
+    "control_and_stream_rows": 0.0001,
+    "codec_embeddings": 5e-05,
+    "codec_output_heads": 0.0001,
+    "small_parts": 2e-05,
+    "audio_frontend_full": 2e-06,
+    "audio_attention_lora": 1e-05,
+    "audio_non_attention_lora": 1e-05
+  },
+  "minimum_learning_rates": {
+    "thinker_lora": 1e-05,
+    "talker_lora": 1e-05,
+    "talker_context_lora": 1e-05,
+    "code_predictor_lora": 1e-05
+  }
+}

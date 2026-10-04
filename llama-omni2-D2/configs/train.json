@@ -1,0 +1,89 @@
+{
+  "model": {
+    "official_model_id": "ICTNLP/LLaMA-Omni2-7B-Bilingual",
+    "official_model_revision": "1fecdd98c361fe50a40b58b78738e3bc690ca349",
+    "official_repository": "https://github.com/ictnlp/LLaMA-Omni2",
+    "official_repository_revision": "c8afa9061a9c2d2c1919f7293f5492d946869752",
+    "dtype": "bf16",
+    "attn_implementation": "sdpa",
+    "thinker_hidden_size": 3584,
+    "control_signal_contract": "interrupt_response_v1",
+    "control_tokens": {
+      "response": "<|duplex_response|>",
+      "interrupt": "<|duplex_interrupt|>",
+      "pad": "<|duplex_pad|>"
+    },
+    "thinker_lora": {
+      "rank": 128,
+      "alpha": 256,
+      "dropout": 0.0,
+      "target_suffixes": [
+        "self_attn.q_proj",
+        "self_attn.k_proj",
+        "self_attn.v_proj",
+        "self_attn.o_proj"
+      ]
+    },
+    "tts_lora": {
+      "rank": 128,
+      "alpha": 256,
+      "dropout": 0.0,
+      "target_suffixes": [
+        "self_attn.q_proj",
+        "self_attn.k_proj",
+        "self_attn.v_proj",
+        "self_attn.o_proj",
+        "mlp.gate_proj",
+        "mlp.up_proj",
+        "mlp.down_proj"
+      ]
+    },
+    "stage3_trainability_contract": "frozen_tts_bridge_attention_mlp_lora_v1",
+    "tts_bridge_trainability": "frozen_released_input_proj_and_gate",
+    "freeze_released_tts_base": true,
+    "replace_released_tts": false
+  },
+  "aut_optim": {
+    "schedule": "constant",
+    "frontend_lr": 5e-05,
+    "attention_lr": 2e-06,
+    "non_attention_lora_lr": 0.0001,
+    "lora_rank": 32,
+    "lora_alpha": 64,
+    "lora_dropout": 0.0,
+    "weight_decay": 0.01,
+    "max_grad_norm": 1.0,
+    "milestone_every_updates": 10000
+  },
+  "optim": {
+    "warmup_updates": 200,
+    "cosine_end_update": 2000,
+    "minimum_lr_ratio": 0.1,
+    "learning_rates": {
+      "thinker_lora": 5e-05,
+      "tts_lora": 5e-05,
+      "control_rows": 0.0001,
+      "audio_frontend_full": 2e-06,
+      "audio_attention_lora": 1e-05,
+      "audio_non_attention_lora": 1e-05
+    },
+    "weight_decay": 0.0,
+    "betas": [
+      0.9,
+      0.999
+    ],
+    "eps": 1e-08,
+    "max_grad_norm": 1.0,
+    "checkpoint_every_seconds": 300,
+    "milestone_every_updates": 10000,
+    "log_every_updates": 1
+  },
+  "loss": {
+    "pad_weight": 0.05,
+    "response_weight": 20.0,
+    "interrupt_weight": 20.0,
+    "text_loss_weight": 1.0,
+    "tts_loss_weight": 1.0,
+    "audio_eos_weight": 3.0
+  }
+}
