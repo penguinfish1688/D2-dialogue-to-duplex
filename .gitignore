@@ -1,7 +1,7 @@
 # Python environments and build output
 __pycache__/
 *.py[cod]
-.venv/
+.venv*/
 venv/
 *.egg-info/
 build/

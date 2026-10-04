@@ -37,13 +37,25 @@ python benchmarks/run.py fdb --data /path/to/v1_0 --output results/fdb
 
 FDB uses a fixed 4096-token KV budget so the longest input (94 seconds) fits without truncation. It preserves each input's duration, adds no response tail, and saves `output.wav` plus annotations in the upstream directory layout. Each `result.json` also includes generated dialogue text, the control trace, and timing; FDB scoring uses the ASR transcript of the waveform. VoiceBench and the app default to 2048 tokens. Every sample is checked against the allocated budget before inference.
 
-Use the pinned [upstream ASR and evaluation scripts](https://github.com/DanielLin94144/Full-Duplex-Bench/tree/3e799c45a045256f47d5f1c9cda90157e2d2ec9e/v1_v1.5) to transcribe and score the output. ASR requires its separate NeMo environment and `nvidia/parakeet-tdt-0.6b-v2`; install the upstream ASR requirements separately from Qwen. Interruption transcription crops at the annotated interruption end. The model card's latency convention is the event-aligned acoustic gap plus 80 ms, excluding device computation time.
-
-After transcription, compute the table metrics and optional GPT quality:
+Transcribe with the pinned [upstream ASR script](https://github.com/DanielLin94144/Full-Duplex-Bench/tree/3e799c45a045256f47d5f1c9cda90157e2d2ec9e/v1_v1.5) and `nvidia/parakeet-tdt-0.6b-v2`. Use a separate environment: NeMo 2.2.1 needs NumPy 1.x and an older Transformers version. Run these commands from the repository root on the GPU machine:
 
 ```bash
 git clone https://github.com/DanielLin94144/Full-Duplex-Bench.git bench-data/Full-Duplex-Bench
 git -C bench-data/Full-Duplex-Bench checkout 3e799c45a045256f47d5f1c9cda90157e2d2ec9e
+python3.12 -m venv .venv-asr
+.venv-asr/bin/python -m pip install --upgrade pip
+.venv-asr/bin/python -m pip install -r benchmarks/asr-requirements.txt
+.venv-asr/bin/python bench-data/Full-Duplex-Bench/v1_v1.5/get_transcript/asr.py \
+  --root_dir results/fdb/synthetic_user_interruption --task user_interruption
+for category in candor_turn_taking candor_pause_handling; do
+  .venv-asr/bin/python bench-data/Full-Duplex-Bench/v1_v1.5/get_transcript/asr.py \
+    --root_dir "results/fdb/$category"
+done
+```
+
+Interruption transcription crops at the annotated interruption end. The model card's latency convention is the event-aligned acoustic gap plus 80 ms, excluding device computation time. After transcription, use the Qwen environment with `benchmarks/requirements.txt` installed to compute metrics:
+
+```bash
 python benchmarks/score_fdb.py --run results/fdb
 # With OPENAI_API_KEY set:
 python benchmarks/score_fdb.py --run results/fdb --judge
