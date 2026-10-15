@@ -1,6 +1,6 @@
 # Dialogue-to-Duplex
 
-[Hugging Face](https://huggingface.co/penguinfish1688/dialogue-to-duplex) · [Quick Start](#quick-start) · [Fine-tuning](#fine-tuning) · [Evaluation](benchmarks/README.md)
+[Paper](https://arxiv.org/html/2610.17124v1) · [Demo](https://d2-duplex-demo.github.io/) · [Hugging Face](https://huggingface.co/penguinfish1688/dialogue-to-duplex) · [Quick Start](#quick-start) · [Fine-tuning](#fine-tuning) · [Evaluation](benchmarks/README.md)
 
 **Dialogue-to-Duplex (D2)** turns pretrained speech models into full-duplex spoken language models that listen and speak at the same time. D2 learns when to respond, continue listening, and yield to interruptions. D2 achieves strong performance on VoiceBench and Full-Duplex-Bench.
 
