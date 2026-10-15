@@ -23,9 +23,16 @@ The 80 ms interval is the model's audio processing step; response latency also d
 
 ### Installation
 
-Use Linux, Python 3.12, and an NVIDIA GPU with a compatible CUDA driver. For Qwen, we recommend an **RTX PRO 6000 Blackwell (96 GB)** and **96 GB of system RAM**. Allow approximately **73 GB** for model weights, plus space for dependencies and caches.
+Use Linux, Python 3.12, and an NVIDIA GPU with **driver 580 or newer**. The pinned PyTorch build uses CUDA 13; see [NVIDIA's driver requirements](https://docs.nvidia.com/deploy/cuda-compatibility/minor-version-compatibility.html). For Qwen, we recommend an **RTX PRO 6000 Blackwell (96 GB)** and **96 GB of system RAM**. Reserve **at least 100 GB of free disk space**: approximately 73 GB for model weights, plus the Python environment, downloads, and compiler caches.
 
-Install `git`, `ffmpeg`, `libsndfile`, a C++ compiler, and Python 3.12 development headers through your system package manager, then run:
+Install `git`, `ffmpeg`, `libsndfile`, a C++ compiler, and Python 3.12 with development headers and `venv` support. On Ubuntu 24.04:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y git ffmpeg libsndfile1 build-essential python3.12-dev python3.12-venv
+```
+
+Then install D2 in its own environment:
 
 ```bash
 git clone https://github.com/penguinfish1688/D2-dialogue-to-duplex.git
@@ -33,7 +40,7 @@ cd D2-dialogue-to-duplex
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -c qwen3-omni-D2/configs/requirements.txt -e '.[qwen]'
+python -m pip install -c qwen3-omni-D2/configs/requirements.txt -e '.[qwen]'
 ```
 
 ### Browser Demo
@@ -42,7 +49,9 @@ pip install -c qwen3-omni-D2/configs/requirements.txt -e '.[qwen]'
 d2-qwen app
 ```
 
-The checkpoint and backbone download automatically from Hugging Face; no login is required. The first startup also compiles kernels and can take several minutes. Once `Uvicorn running` appears, open [http://localhost:8000](http://localhost:8000), allow microphone access, and use headphones.
+The checkpoint and backbone download automatically from Hugging Face; no login is required. If your home directory has limited space, set `HF_HOME` to a larger disk before launching. The first startup also compiles kernels and can take several minutes. Once `Uvicorn running` appears, open [http://localhost:8000](http://localhost:8000), use headphones, click **Start conversation**, and allow microphone access. Wait for **Listening**, then speak.
+
+In a new terminal, run `source .venv/bin/activate` from the repository directory before starting the app again.
 
 For a remote GPU, run this on your computer before opening the same URL:
 
@@ -51,6 +60,8 @@ ssh -L 8000:localhost:8000 user@gpu-host
 ```
 
 The app serves one conversation at a time. The default context supports about 54 seconds; start a new conversation or increase it with `d2-qwen app --kv-budget 4096`.
+
+To measure real-time performance on your GPU, see the [app performance check](benchmarks/README.md#app-performance).
 
 ### Audio File Inference
 
