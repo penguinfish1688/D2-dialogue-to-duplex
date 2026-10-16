@@ -17,6 +17,13 @@ python -m d2_qwen.app
 
 The default is the public [80 ms checkpoint](https://huggingface.co/penguinfish1688/dialogue-to-duplex). No login is required. Pass `--model PATH_OR_HF_ID` to select another release. Downloading the backbone and D2 weights needs about 73 GB of disk space; set `HF_HOME` to select the cache directory. Use `--revision COMMIT` to pin a hosted D2 release and `--offline` to require cached assets. Dependencies are pinned to PyTorch 2.11 and Transformers 5.13.
 
+The paper's five benchmark checkpoints are available as revisions `qwen-80ms`, `qwen-160ms`, `qwen-320ms`, `qwen-640ms`, and `qwen-1040ms` in the same repository. Each revision includes its matching streaming encoder and update-10,000 D2 weights. Only the selected variant is downloaded. For example:
+
+```bash
+d2-qwen infer --revision qwen-320ms --input question.wav --output response.wav --tail-seconds 20
+d2-qwen app --revision qwen-320ms
+```
+
 The Dialogue-to-Duplex app listens on localhost:8000. Use headphones. For a remote GPU, forward port 8000 over SSH; microphone access works on localhost. Only one conversation can use a model instance at a time. Stopping or closing the browser releases that session so you can start another conversation.
 
 ## Runtime

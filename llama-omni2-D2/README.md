@@ -1,6 +1,6 @@
 # LLaMA-Omni2 D2
 
-LLaMA-Omni2 D2 checkpoints are not released yet. Currently, D2 releases only the [Qwen3-Omni 80 ms checkpoint](https://huggingface.co/penguinfish1688/dialogue-to-duplex).
+The paper's 100-, 200-, 400-, and 800-ms benchmark checkpoints are available in [penguinfish1688/dialogue-to-duplex](https://huggingface.co/penguinfish1688/dialogue-to-duplex), at revisions `llama-100ms`, `llama-200ms`, `llama-400ms`, and `llama-800ms`. Each includes its matching streaming encoder and update-10,000 D2 weights.
 
 A causal Whisper-large-v3 encoder, the released LLaMA-Omni2 Qwen2 Thinker, its native speech generator, and CosyVoice2 waveform rendering. Every interval retains the native **100-ms** text/playback clock and **25-Hz** speech-unit clock.
 
@@ -10,14 +10,16 @@ From the repository root, in its own Python 3.12 environment:
 
 ```bash
 pip install -c llama-omni2-D2/configs/requirements.txt -e '.[llama]'
-d2-llama download --model MODEL
-d2-llama infer --model MODEL --input question.wav --output response.wav
-d2-llama app --model MODEL
+MODEL=penguinfish1688/dialogue-to-duplex
+REVISION=llama-100ms
+d2-llama download --model "$MODEL" --revision "$REVISION"
+d2-llama infer --model "$MODEL" --revision "$REVISION" --input question.wav --output response.wav
+d2-llama app --model "$MODEL" --revision "$REVISION"
 # Equivalent app entry point:
-python -m d2_llama.app --model MODEL
+python -m d2_llama.app --model "$MODEL" --revision "$REVISION"
 ```
 
-`MODEL` is a local release directory or an eventual Hugging Face ID. The default `HF_ORG/LLaMA-Omni2-D2` is a placeholder. Use `--revision COMMIT` to pin a hosted D2 release and `--offline` to require cached assets. This environment uses Transformers 4.43.4 and must be separate from Qwen's environment.
+`MODEL` selects the hosted repository; change `REVISION` to choose a chunk duration. Pass both options as shown because the CLI's built-in LLaMA model default remains a placeholder. Only the selected variant is downloaded. You can also pass a local release directory with `--model`, use `--revision COMMIT` to pin a hosted release, or use `--offline` to require cached assets. This environment uses Transformers 4.43.4 and must be separate from Qwen's environment.
 
 The downloader also fetches the pinned LLaMA-Omni2 source, native model, Whisper weights, CosyVoice2 renderer, and checksum-verified Matcha renderer dependency. No manual private checkout is needed. Upstream code is cached under `HF_HOME/d2`; the released English voice prompt is used.
 
@@ -39,7 +41,7 @@ Thinker, speech-decoder, and encoder computation use BF16. Inference stores the 
 ## Fine-tune
 
 ```bash
-d2-llama train --model MODEL --data samples.json --output my-llama-d2 --steps 2000
+d2-llama train --model "$MODEL" --revision "$REVISION" --data samples.json --output my-llama-d2 --steps 2000
 ```
 
 Samples use the [shared manifest format](../d2/SAMPLES.md). The current model has **180,607,488** trainable parameters: rank-128 Thinker attention and speech-decoder attention/MLP adapters, rank-32 encoder attention/MLP/projector adapters, encoder convolution weights, control rows, and two stream rows. The released speech-conditioning projection and fusion gate remain frozen.

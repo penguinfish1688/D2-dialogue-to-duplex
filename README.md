@@ -10,14 +10,16 @@ D2 combines causal audio encoder distillation with dialogue fine-tuning, while k
 
 ## Models
 
-**Currently, D2 releases only the Qwen3-Omni 80 ms checkpoint.**
+All nine main checkpoint variants from Tables 1 and 2 of the paper are available. Each release contains the benchmark model at update 10,000 and its matching streaming encoder.
 
-| Model | Checkpoint | Documentation |
+| Model | Chunk durations (ms) | Hugging Face revisions |
 | --- | --- | --- |
-| Qwen3-Omni D2 · 80 ms | [Hugging Face](https://huggingface.co/penguinfish1688/dialogue-to-duplex) | [Qwen3-Omni D2](qwen3-omni-D2/README.md) |
-| LLaMA-Omni2 D2 | Not yet released | [LLaMA-Omni2 D2](llama-omni2-D2/README.md) |
+| Qwen3-Omni-D2 | [80](https://huggingface.co/penguinfish1688/dialogue-to-duplex/tree/qwen-80ms), [160](https://huggingface.co/penguinfish1688/dialogue-to-duplex/tree/qwen-160ms), [320](https://huggingface.co/penguinfish1688/dialogue-to-duplex/tree/qwen-320ms), [640](https://huggingface.co/penguinfish1688/dialogue-to-duplex/tree/qwen-640ms), [1040](https://huggingface.co/penguinfish1688/dialogue-to-duplex/tree/qwen-1040ms) | `qwen-80ms`, `qwen-160ms`, `qwen-320ms`, `qwen-640ms`, `qwen-1040ms` |
+| LLaMA-Omni 2-D2 | [100](https://huggingface.co/penguinfish1688/dialogue-to-duplex/tree/llama-100ms), [200](https://huggingface.co/penguinfish1688/dialogue-to-duplex/tree/llama-200ms), [400](https://huggingface.co/penguinfish1688/dialogue-to-duplex/tree/llama-400ms), [800](https://huggingface.co/penguinfish1688/dialogue-to-duplex/tree/llama-800ms) | `llama-100ms`, `llama-200ms`, `llama-400ms`, `llama-800ms` |
 
-The 80 ms interval is the model's audio processing step; response latency also depends on generation and computation.
+`main` remains the Qwen 80-ms default. Each named revision contains one variant, so downloading a revision does not download the other models. Use `--revision` to select a chunk duration, or pass a commit SHA to pin the exact release. The interval is the audio processing chunk duration; response latency also depends on generation and computation.
+
+See the [Qwen guide](qwen3-omni-D2/README.md) or [LLaMA-Omni 2 guide](llama-omni2-D2/README.md) for model-specific installation and commands.
 
 ## Quick Start
 
@@ -91,7 +93,7 @@ See the model guides for training settings and trainable parameters.
 
 ## Research Results
 
-The following figures and table summarize D2 research results across models and interaction intervals. Only the Qwen3-Omni 80 ms checkpoint is currently available for download.
+The following figures and table summarize D2 research results across models and interaction intervals. The nine main D2 variants are available through the revisions listed above.
 
 ### VoiceBench
 
